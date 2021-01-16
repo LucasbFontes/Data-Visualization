@@ -1,0 +1,78 @@
+Directory 1 - guarda os arquivos que vem de snesores IoT
+	Criei uma pasta no meu Master Node chamada data e colocarei e ligarei esse directory 1 a essa pasta /home/hadoop/data
+	arquivos padrão: json
+	read order last modified datastamp
+
+quero criar esses dados em mensagens e consumir com um broker(middleware) para depois consumir os dados e enviar para o meu datalake (middleware garantirá segurança, persistencia)
+exemplo, se um dos clusters cair os dados continuarão no apache kafka, após religar o cluster os dados voltarão de onde pararam.
+
+próximo passo quero enviar para o kafka producer, clica em destino e escolhe(mas antes preciso ativar o driver do kafka), clico em packet manager, baixo a libraria do kafka
+depois seleciono o kafka producer como destino do directory 1, e o próximo passo e inicializar o kafka no nó mestre
+
+primeiro iniciamos o zookeper: nohup bin/zookeeper-server-start.sh config/zookeeper.properties > zookeeper.log &
+(nohup para rodar em background, bin... para rodar o zookeper com as propriedades do config e jogo o arquivo de log para zookeeper.log o & serve para rodar no background
+
+agora inicializando o kafka: nohup bin/kafka-server-start.sh config/server.properties > kafka.log &
+
+
+agora vamos criar o tópico, comando: bin/kafka-topics.sh --create --topic sensores --zookeeper localhost:2181 --replication-factor 1 --partitions 1
+depois volta no streamsets e seleciona o producer, bota o nome do topic, deixa o partition strategy como round robin 
+
+depois a gente clica em validar e depois testar
+
+
+depois volta pro terminal 
+
+
+agora vamos entrar no diretório data e colocar os arquivos de snesores(esse arquivo é fornecido pela DSA, vem no formato json)
+
+depois voltamos no workflow e vemos se o pipeline está sendo alimentado
+
+eles estão alimentando o tópico do broker kafka que deve agora consumir essas mensagens
+
+sempre que um arquivo cair no diretorio /data ele vai ser consumido pelo producer que vai enviar os dados para o topico que será consumido pelo consumer
+
+agora checando se os dados estão no tópico> bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic sensores --from-beginning (abre o kafka consumer com o zookeeper da o localhost indica o topico e mostra que quer ler do começo
+
+agora vou criar um novo pipeline pra conectar o producer, não vou manter tudo em um só. pq caso um item do pipeline caia o resto cai tb 
+
+criado o consumer da mesma forma que o producer, a gente precisa agora de um lugar para armazenar esses dados que será nosso cluster hadoop que será preciso tb baixar no packet manager
+
+depois de instalar o library o streamset reinicia e ja podemos adicionar o hadoop
+
+para configurar basta adicionar no 'hadook fs configuration drectory' onde estão os arquivos de configuração: /opt/hadoop/etc/hadoop
+para configurar o hadoop fs URI basta pegar o valor do fs default name no core-site.xml: hdfs://ip-172-31-10-194.us-east-2.compute.internal:19000
+
+depois é pegar esse arquivo onde será o output files
+
+com isso basta adicionar inicializar o HDFS e depois ja podemos gravar os dados no datalake
+
+depois é só dar validate 
+
+e rodar 
+
+com o comando hdfs dfs -ls /tmp/out/2021-01-15-21/_tmp_sensoresdata_0 eu vejo os arquivos que foram gravados no meu datalake
+
+com o comando hdfs dfs -cat /tmp/out/2021-01-15-21/_tmp_sensoresdata_0, o conteúdo é mostrado na tela 
+
+agora para criar um processo de limpeza de dados 
+
+primeiro para o pipeline 
+
+e depois seleciona o recor deduplicator, ele tem duas portas de saida a primeira é para os registros unicos e os duplicados ele leva pra outra porta, os registros unicos
+vão para o hdfs e os duplicados eu levo para trash
+
+depois clica no record deduplicator(não precisa mexer no kafka) e em required fields eu escrevo quais campos eu quero chegar se tem duplicados /sensor_id
+
+
+depois em deduplication eu seleciono os field que quero deduplicar 
+
+com isso as configurações estão prontas e já podemos rodar
+
+antes vamos alimentar os producer com mais infomrações 
+
+
+
+
+
+
